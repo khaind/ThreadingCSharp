@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ThreadingCSharp.Part1
 {
@@ -7,6 +8,7 @@ namespace ThreadingCSharp.Part1
     {
         static void Main()
         {
+            Console.WriteLine("==============Part 1 basic ==================");
             // NOTE: threads are created using the Thread class’s constructor, passing in a ThreadStart delegate which indicates where execution should begin
             //Thread t = new Thread(new ThreadStart(Go));
             Thread t = new Thread(Go);    // No need to explicitly use ThreadStart
@@ -17,18 +19,18 @@ namespace ThreadingCSharp.Part1
             Go();        // Simultaneously run Go() in the main thread.
 
 
-            NextNote();
+            NextNote("--------------------------");
             // NOTE: Another shortcut is to use a lambda expression or anonymous method:
             Thread t0 = new Thread(() => Console.WriteLine("Hello!"));
             t0.Start();
 
-            NextNote();
+            NextNote("--------------------------");
             #region PASSING DATA TO THREADS
             // NOTE: The easiest way to pass arguments to a thread’s target method is to execute a lambda expression that calls the method with the desired arguments
             Thread t1 = new Thread(() => Print("Hello from t1!")); 
             t1.Start();
 
-            NextNote();
+            NextNote("--------------------------");
             // NOTE: Another technique is to pass an argument into Thread’s Start method
             Thread t2 = new Thread(PrintObj); // this will accept "public delegate void ParameterizedThreadStart (object obj)"
             t2.Start("Hello from t2!");
@@ -45,10 +47,18 @@ namespace ThreadingCSharp.Part1
                 int temp = i;
                 new Thread(() => Console.Write(temp)).Start();
             }
+            NextNote();
+            string text = "t1";
+            t1 = new Thread(() => Console.WriteLine(text));
+            t2 = new Thread(() => Console.WriteLine(text));
+            t1.Start();
+            text = "t2";
+            t2.Start();
+
             #endregion
 
             #region THREAD NAMING
-            NextNote();
+            NextNote("--------------------------");
             // Each thread has a Name property that you can set for the benefit of debugging
             Thread.CurrentThread.Name = "main";
             Thread worker = new Thread(Go);
@@ -64,17 +74,35 @@ namespace ThreadingCSharp.Part1
 
             #endregion
 
+            NextNote("------------------------");
             #region PRIORITY
             // NOTE: A thread’s Priority property determines how much execution time it gets relative to other active threads in the operating system
             // => Think carefully before elevating a thread’s priority — it can lead to problems such as resource starvation for other threads.
+            //enum ThreadPriority { Lowest, BelowNormal, Normal, AboveNormal, Highest }
+
             #endregion
+
+            NextNote("-------------------------");
 
             #region EXCEPTION HANDLINGS
             // NOTE: Any try/catch/finally blocks in scope when a thread is created are of no relevance to the thread when it starts executing
-
+            new Thread(GoEx).Start();
             #endregion
 
+            NextNote("---------------TPL--------------");
             #region THREAD POOLING
+            // TPL
+            Task.Factory.StartNew(Go);
+
+            NextNote("--------------No TPL------------");
+            ThreadPool.QueueUserWorkItem(GoData, "123");
+
+            // Asynchronous delegates
+            Func<string, int> method = Work;
+            IAsyncResult cookie = method.BeginInvoke("test", null, null);
+            // DO other work in parallel
+            int length = method.EndInvoke(cookie);
+            Console.WriteLine("String length is {0}", length);
 
             #endregion
 
@@ -87,10 +115,10 @@ namespace ThreadingCSharp.Part1
             Console.WriteLine(s);
         }
 
-        private static void NextNote()
+        private static void NextNote(string message = "")
         {
-            Console.WriteLine();
-            Thread.Sleep(100);
+            Console.WriteLine(message);
+            Thread.Sleep(1000);
         }
 
         private static void Print(string msg)
@@ -100,8 +128,34 @@ namespace ThreadingCSharp.Part1
 
         static void Go()
         {
-            Console.WriteLine("hello from:" + Thread.CurrentThread.Name);
+            Console.WriteLine("hello from {0}. IsThreadPool : {1}" ,Thread.CurrentThread.Name, Thread.CurrentThread.IsThreadPoolThread);
         }
 
+        static void GoData(object data)
+        {
+            Console.WriteLine("hello from {0} IsThreadPool : {1}", Thread.CurrentThread.Name, Thread.CurrentThread.IsThreadPoolThread);
+            PrintObj(data);
+        }
+        static void GoEx()
+        {
+            try
+            {
+                //...
+                throw null; // The NullReferenceException will get caught below
+                //...
+}
+            catch (Exception ex)
+            {
+                Console.WriteLine("Catch ex: {0}", ex.StackTrace);
+                //Typically log the exception, and/ or signal another thread
+                //that we've come unstuck
+                //...
+            }
+        }
+
+        static int Work(string s)
+        {
+            return s.Length;
+        }
     }
 }
